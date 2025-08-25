@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { MdError } from "react-icons/md";
-import { MdCheckCircle } from "react-icons/md";
+import { MdError, MdCheckCircle } from "react-icons/md";
 
 export default function SignupForm() {
   const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
     username: "",
     email: "",
     password: "",
@@ -11,11 +12,13 @@ export default function SignupForm() {
   });
 
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     setError("");
+    setSuccess("");
   };
 
   const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -28,10 +31,19 @@ export default function SignupForm() {
     special: /[^A-Za-z0-9]/.test(formData.password),
   };
 
-  const handleSubmit = (e) => {
+  const API_URL = import.meta.env.VITE_API_URL;
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.username || !formData.email || !formData.password || !formData.passwordConfirmation) {
+    if (
+      !formData.firstName ||
+      !formData.lastName ||
+      !formData.username ||
+      !formData.email ||
+      !formData.password ||
+      !formData.passwordConfirmation
+    ) {
       setError("Tous les champs sont obligatoires.");
       return;
     }
@@ -52,17 +64,38 @@ export default function SignupForm() {
       return;
     }
 
-    console.log("Données du formulaire :", formData);
-    setError("");
+    try {
+      const response = await fetch(`${API_URL}/api/auth/Register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Erreur lors de l'inscription.");
+      } else {
+        setSuccess(data.message || "Inscription réussie ✅");
+        setFormData({
+          firstName: "",
+          lastName: "",
+          username: "",
+          email: "",
+          password: "",
+          passwordConfirmation: "",
+        });
+      }
+    } catch {
+      setError("Impossible de contacter le serveur.");
+    }
   };
 
   const renderCheck = (label, isValid) => (
     <li className={`flex items-center gap-2 ${isValid ? "text-green-600" : "text-red-500"}`}>
-      {isValid ? (
-        <span className="material-symbols-outlined text-green-600"><MdCheckCircle /></span>
-      ) : (
-        <span className="material-symbols-outlined text-red-500"><MdError /></span>
-      )}
+      {isValid ? <MdCheckCircle /> : <MdError />}
       {label}
     </li>
   );
@@ -77,6 +110,41 @@ export default function SignupForm() {
           <p className="text-4xl font-extrabold">INSCRIPTION</p>
         </div>
 
+        {/* Prénom */}
+        <fieldset className="fieldset mb-4">
+          <div className="flex items-center">
+            <legend className="fieldset-legend">Prénom</legend>
+            <p className="text-red-500 font-bold ml-1">*</p>
+          </div>
+          <input
+            type="text"
+            name="firstName"
+            value={formData.firstName}
+            onChange={handleChange}
+            placeholder="Entrez votre prénom"
+            required
+            className="input input-bordered w-full"
+          />
+        </fieldset>
+
+        {/* Nom */}
+        <fieldset className="fieldset mb-4">
+          <div className="flex items-center">
+            <legend className="fieldset-legend">Nom</legend>
+            <p className="text-red-500 font-bold ml-1">*</p>
+          </div>
+          <input
+            type="text"
+            name="lastName"
+            value={formData.lastName}
+            onChange={handleChange}
+            placeholder="Entrez votre nom"
+            required
+            className="input input-bordered w-full"
+          />
+        </fieldset>
+
+        {/* Nom d'utilisateur */}
         <fieldset className="fieldset mb-4">
           <div className="flex items-center">
             <legend className="fieldset-legend">Nom d'utilisateur</legend>
@@ -93,6 +161,7 @@ export default function SignupForm() {
           />
         </fieldset>
 
+        {/* Email */}
         <fieldset className="fieldset mb-4">
           <div className="flex items-center">
             <legend className="fieldset-legend">Email</legend>
@@ -109,6 +178,7 @@ export default function SignupForm() {
           />
         </fieldset>
 
+        {/* Mot de passe */}
         <fieldset className="fieldset mb-4">
           <div className="flex items-center">
             <legend className="fieldset-legend">Mot de passe</legend>
@@ -124,7 +194,6 @@ export default function SignupForm() {
             className="input input-bordered w-full"
           />
 
-          {/* Indications dynamiques */}
           {formData.password && (
             <ul className="mt-2 ml-2 text-sm space-y-1">
               {renderCheck("Au moins 8 caractères", passwordChecks.length)}
@@ -136,6 +205,7 @@ export default function SignupForm() {
           )}
         </fieldset>
 
+        {/* Confirmation */}
         <fieldset className="fieldset mb-4">
           <div className="flex items-center">
             <legend className="fieldset-legend">Confirmation du mot de passe</legend>
@@ -157,22 +227,15 @@ export default function SignupForm() {
         </button>
       </form>
 
+      {/* Messages */}
       {error && (
         <div role="alert" className="alert alert-warning my-4 max-w-md mx-auto">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-6 w-6 shrink-0 stroke-current"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            />
-          </svg>
           <span>{error}</span>
+        </div>
+      )}
+      {success && (
+        <div role="alert" className="alert alert-success my-4 max-w-md mx-auto">
+          <span>{success}</span>
         </div>
       )}
     </>
